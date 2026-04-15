@@ -15,12 +15,14 @@ export default function StepRender({ onBack }) {
     if (status === 'rendering' && currentProject?.stages?.video?.id) {
       const interval = setInterval(async () => {
         try {
-          const response = await videoAPI.getVideoStatus(currentProject.stages.video.id)
-          setRenderProgress(response.data.progress || 0)
+          const response = await videoAPI.getVideo(currentProject.stages.video.id)
+          // Simulate progress increase
+          setRenderProgress(prev => Math.min(prev + 10, 90))
           if (response.data.status === 'completed') {
-            const videoResponse = await videoAPI.getVideo(currentProject.stages.video.id)
-            setVideoUrl(videoResponse.data.video_url)
+            setVideoUrl(`http://localhost:8000/${response.data.file_path}`)
+            setRenderProgress(100)
             setStatus('completed')
+            clearInterval(interval)
           }
         } catch (err) {
           console.error('Error checking status:', err)
@@ -35,26 +37,18 @@ export default function StepRender({ onBack }) {
     setStatus('rendering')
     setLoading(true)
     try {
-      // Generate subtitles first
-      if (currentProject.settings?.includeSubtitles) {
-        await subtitleAPI.generate({
-          video_id: `video_${Date.now()}`,
-          language: 'en'
-        })
-      }
-
       // Generate video
       const response = await videoAPI.generate({
-        slides_id: currentProject.stages.slides?.id,
         voice_id: currentProject.stages.voice?.id,
-        transition: 'fade',
-        resolution: '1080p'
+        slides_id: currentProject.stages.slides?.id,
+        add_subtitles: currentProject.settings?.includeSubtitles || false
       })
 
       updateStage(currentProject.id, 'video', {
         id: response.data.video_id,
-        videoUrl: response.data.video_url,
-        duration: response.data.duration,
+        filePath: response.data.file_path,
+        fileName: response.data.file_name,
+        duration: response.data.duration_secs,
         status: response.data.status
       })
 
@@ -70,10 +64,12 @@ export default function StepRender({ onBack }) {
   }
 
   const handleDownload = () => {
-    if (videoUrl) {
+    if (currentProject.stages.video?.fileName) {
+      // Use the download endpoint
+      const downloadUrl = videoAPI.downloadVideo(currentProject.stages.video.fileName)
       const a = document.createElement('a')
-      a.href = videoUrl
-      a.download = `${currentProject.name}.mp4`
+      a.href = downloadUrl
+      a.download = currentProject.stages.video.fileName
       a.click()
     }
   }

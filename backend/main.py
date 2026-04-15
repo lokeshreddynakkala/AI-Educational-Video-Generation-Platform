@@ -36,6 +36,7 @@ app.include_router(subtitle.router)
 # Create directories if they don't exist
 os.makedirs(config.UPLOAD_DIR, exist_ok=True)
 os.makedirs(config.OUTPUT_DIR, exist_ok=True)
+os.makedirs(config.TEMP_DIR, exist_ok=True)
 
 @app.get("/")
 def read_root():
@@ -48,6 +49,10 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
+
+@app.get("/api/hello")
+def hello():
+    return {"message": "Hello from Project B10 API"}
 
 if __name__ == "__main__":
     import uvicorn

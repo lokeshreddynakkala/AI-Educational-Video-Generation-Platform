@@ -14,9 +14,10 @@ export default function StepSlides({ onNext, onBack }) {
     setLoading(true)
     try {
       const response = await slidesAPI.generate({
-        script_id: currentProject.stages.script?.id,
-        slide_count: slideCount,
-        style: 'modern'
+        topic: currentProject.topic,
+        script_segments: currentProject.stages.script?.segments || [],
+        theme: 'modern',
+        num_slides: slideCount
       })
       setSlides(response.data.slides)
       updateStage(currentProject.id, 'slides', {
@@ -24,8 +25,11 @@ export default function StepSlides({ onNext, onBack }) {
         slides: response.data.slides,
         totalSlides: response.data.total_slides
       })
+      setError('') // Clear any previous errors
+      // Show success message
+      alert('Slides generated successfully! PowerPoint file created.')
     } catch (err) {
-      setError(err.message)
+      setError(err.message || 'Failed to generate slides')
       console.error('Slides generation error:', err)
     } finally {
       setGenerating(false)

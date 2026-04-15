@@ -9,16 +9,17 @@ export default function CreateProject() {
   const [formData, setFormData] = useState({
     name: '',
     topic: '',
-    duration: 60,
-    tone: 'professional',
-    targetAudience: ''
+    duration: 'medium',
+    language: 'English',
+    audience: 'General',
+    extraNotes: ''
   })
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'duration' ? parseInt(value) : value
+      [name]: value
     }))
   }
 
@@ -34,8 +35,9 @@ export default function CreateProject() {
       name: formData.name,
       topic: formData.topic,
       duration: formData.duration,
-      tone: formData.tone,
-      targetAudience: formData.targetAudience
+      language: formData.language,
+      audience: formData.audience,
+      extraNotes: formData.extraNotes
     })
 
     setCurrentProject(newProject)
@@ -76,38 +78,47 @@ export default function CreateProject() {
           </div>
 
           <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="duration">Duration (seconds)</label>
-              <input
-                type="number"
-                id="duration"
-                name="duration"
-                value={formData.duration}
-                onChange={handleChange}
-                min="30"
-                max="600"
-              />
+            <div className="form-group">Video Duration</label>
+              <select name="duration" value={formData.duration} onChange={handleChange}>
+                <option value="short">Short (2 min)</option>
+                <option value="medium">Medium (5 min)</option>
+                <option value="long">Long (10 min)</option>
+              </select>
             </div>
 
             <div className="form-group">
-              <label htmlFor="tone">Tone</label>
-              <select name="tone" value={formData.tone} onChange={handleChange}>
-                <option value="professional">Professional</option>
-                <option value="casual">Casual</option>
-                <option value="educational">Educational</option>
-                <option value="entertaining">Entertaining</option>
+              <label htmlFor="language">Language</label>
+              <select name="language" value={formData.language} onChange={handleChange}>
+                <option value="English">English</option>
+                <option value="Spanish">Spanish</option>
+                <option value="French">French</option>
+                <option value="German">German</option>
+                <option value="Chinese">Chinese</option>
               </select>
             </div>
           </div>
 
           <div className="form-group">
-            <label htmlFor="targetAudience">Target Audience</label>
+            <label htmlFor="audience">Target Audience</label>
             <input
               type="text"
-              id="targetAudience"
-              name="targetAudience"
-              value={formData.targetAudience}
+              id="audience"
+              name="audience"
+              value={formData.audience}
               onChange={handleChange}
+              placeholder="e.g., Beginners, Tech enthusiasts"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="extraNotes">Additional Notes (optional)</label>
+            <textarea
+              id="extraNotes"
+              name="extraNotes"
+              value={formData.extraNotes}
+              onChange={handleChange}
+              placeholder="Any specific requirements or instructions..."
+              rows="2
               placeholder="e.g., Beginners, Tech enthusiasts"
             />
           </div>

@@ -27,7 +27,7 @@ export const slidesAPI = {
 
 // Voice endpoints
 export const voiceAPI = {
-  generate: (data) => api.post('/voice/generate', data),
+  generate: (data) => api.post('/voice/synthesize-all', data),
   getVoice: (voiceId) => api.get(`/voice/voice/${voiceId}`),
   updateVoice: (voiceId, data) => api.put(`/voice/voice/${voiceId}`, data),
   deleteVoice: (voiceId) => api.delete(`/voice/voice/${voiceId}`)
@@ -38,6 +38,7 @@ export const videoAPI = {
   generate: (data) => api.post('/video/generate', data),
   getVideo: (videoId) => api.get(`/video/video/${videoId}`),
   getVideoStatus: (videoId) => api.get(`/video/video/${videoId}/status`),
+  downloadVideo: (filename) => `${API_BASE_URL}/video/download/${filename}`,
   deleteVideo: (videoId) => api.delete(`/video/video/${videoId}`)
 }
 

@@ -15,17 +15,19 @@ export default function StepScript({ onNext, onBack }) {
       const response = await scriptAPI.generate({
         topic: currentProject.topic,
         duration: currentProject.duration,
-        tone: currentProject.tone,
-        target_audience: currentProject.targetAudience
+        language: currentProject.language || 'English',
+        audience: currentProject.audience || 'General',
+        extra_notes: currentProject.extraNotes || ''
       })
       setScript(response.data.content)
       updateStage(currentProject.id, 'script', {
         id: response.data.script_id,
         content: response.data.content,
-        wordCount: response.data.word_count
+        wordCount: response.data.word_count,
+        segments: response.data.segments
       })
     } catch (err) {
-      setError(err.message)
+      setError(err.message || 'Failed to generate script')
       console.error('Script generation error:', err)
     } finally {
       setGenerating(false)

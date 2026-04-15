@@ -5,40 +5,31 @@ import './StepVoice.css'
 
 export default function StepVoice({ onNext, onBack }) {
   const { currentProject, updateStage, setLoading, setError } = useProject()
-  const [voiceSettings, setVoiceSettings] = useState({
-    voiceId: 'default',
-    speed: 1.0,
-    pitch: 1.0
-  })
   const [generating, setGenerating] = useState(false)
-  const [audioUrl, setAudioUrl] = useState(currentProject?.stages?.voice?.audioUrl || null)
-
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setVoiceSettings(prev => ({
-      ...prev,
-      [name]: name === 'voiceId' ? value : parseFloat(value)
-    }))
-  }
+  const [audioFiles, setAudioFiles] = useState(currentProject?.stages?.voice?.audioFiles || [])
 
   const handleGenerateVoice = async () => {
     setGenerating(true)
     setLoading(true)
     try {
+      const segments = (currentProject.stages.script?.segments || []).map((text, index) => ({
+        slide_number: index + 1,
+        text: text
+      }))
+      
       const response = await voiceAPI.generate({
-        script_id: currentProject.stages.script?.id,
-        voice_id: voiceSettings.voiceId,
-        speed: voiceSettings.speed,
-        pitch: voiceSettings.pitch
+        segments: segments,
+        language: currentProject.language || 'English'
       })
-      setAudioUrl(response.data.audio_url)
+      
+      setAudioFiles(response.data.audio_files)
       updateStage(currentProject.id, 'voice', {
         id: response.data.voice_id,
-        audioUrl: response.data.audio_url,
-        duration: response.data.duration
+        audioFiles: response.data.audio_files,
+        totalSegments: response.data.total_segments
       })
     } catch (err) {
-      setError(err.message)
+      setError(err.message || 'Failed to generate voice')
       console.error('Voice generation error:', err)
     } finally {
       setGenerating(false)
@@ -47,7 +38,7 @@ export default function StepVoice({ onNext, onBack }) {
   }
 
   const handleNext = () => {
-    if (!audioUrl) {
+    if (audioFiles.length === 0) {
       setError('Please generate voice audio first')
       return
     }
@@ -59,54 +50,7 @@ export default function StepVoice({ onNext, onBack }) {
       <h2>Voice Generation</h2>
       <p className="step-description">Generate voice audio for your video</p>
 
-      <div className="voice-settings">
-        <div className="form-group">
-          <label htmlFor="voiceId">Voice Selection</label>
-          <select 
-            id="voiceId"
-            name="voiceId"
-            value={voiceSettings.voiceId}
-            onChange={handleChange}
-          >
-            <option value="default">Default (Male)</option>
-            <option value="female">Female</option>
-            <option value="child">Child</option>
-            <option value="narrator">Narrator</option>
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="speed">
-            Speech Speed: {voiceSettings.speed.toFixed(1)}x
-          </label>
-          <input
-            type="range"
-            id="speed"
-            name="speed"
-            min="0.5"
-            max="2.0"
-            step="0.1"
-            value={voiceSettings.speed}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="pitch">
-            Pitch: {voiceSettings.pitch.toFixed(1)}
-          </label>
-          <input
-            type="range"
-            id="pitch"
-            name="pitch"
-            min="0.5"
-            max="2.0"
-            step="0.1"
-            value={voiceSettings.pitch}
-            onChange={handleChange}
-          />
-        </div>
-
+      <div className="voice-controls">
         <button 
           className="btn-primary" 
           onClick={handleGenerateVoice}
@@ -116,10 +60,20 @@ export default function StepVoice({ onNext, onBack }) {
         </button>
       </div>
 
-      {audioUrl && (
+      {audioFiles.length > 0 && (
         <div className="audio-preview">
-          <h3>Preview</h3>
-          <audio controls src={audioUrl} />
+          <h3>Audio Segments Created ({audioFiles.length})</h3>
+          <div className="audio-list">
+            {audioFiles.map((file, index) => (
+              <div key={index} className="audio-item">
+                <div className="audio-info">
+                  <span>Slide {file.slide_number}</span>
+                  <span>{file.file_name}</span>
+                </div>
+                <audio controls src={`http://localhost:8000/${file.file_path}`} />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
