@@ -1,52 +1,48 @@
-# Project B10
+# Project B10 - Educational Video Generation Platform
 
-A full-stack web application with FastAPI backend and React frontend.
+## What it does
+AI-powered platform that generates complete educational videos from just a topic.
+Users get a full MP4 video with professional slides, AI voice narration, in ~60 seconds.
+No camera, no GPU, no studio required.
 
-## Project Structure
+## Tech Stack
+- Backend: FastAPI (Python)
+- Frontend: React + Vite
+- AI Script: Groq API - LLaMA3 (free)
+- Voice: gTTS - Google Text to Speech (free)
+- Slides: python-pptx (local, free)
+- Video: FFmpeg H.264/AAC (CPU, no GPU needed)
 
-```
-project-b10/
-├── backend/          # FastAPI application
-│   ├── main.py       # Main FastAPI app
-│   ├── requirements.txt
-│   └── venv/         # Virtual environment (created after setup)
-└── frontend/         # React + Vite application
-    ├── src/
-    ├── index.html
-    ├── package.json
-    └── vite.config.js
-```
-
-## Setup Instructions
-
-### Backend Setup
+## How to Run
 ```bash
+# Backend
 cd backend
-python -m venv venv
-venv\Scripts\activate        # Windows
-# or: source venv/bin/activate  # macOS/Linux
-pip install -r requirements.txt
+venv\Scripts\activate
 uvicorn main:app --reload
-```
 
-Backend will run on `http://localhost:8000`
-
-### Frontend Setup
-```bash
+# Frontend  
 cd frontend
-npm install
 npm run dev
 ```
 
-Frontend will run on `http://localhost:5173`
+Open http://localhost:5173
 
-## API Endpoints
+## Features Beyond Original Spec (Upgrades)
+- Auto slide generation when user has no slides
+- Duration selection: 2, 5, or 10 minute videos
+- Multi-language script and voice support
+- Subtitle burn-in option
 
-- `GET /` - Root endpoint
-- `GET /api/hello` - Hello endpoint
+## Architecture Decisions
+- Groq over OpenAI: free tier, 300 tokens/sec, no credit card
+- gTTS over ElevenLabs: no rate limits, no API key needed
+- FFmpeg over cloud: no GPU cost, runs on any CPU/NPU
+- python-pptx: fully local, no external service dependency
+- Polling over WebSockets: simpler for reliability, works perfectly
 
-## Tech Stack
-
-- **Backend**: FastAPI, Uvicorn
-- **Frontend**: React, Vite, Axios
-- **Styling**: CSS
+## Pipeline Performance
+- Script: ~15 seconds
+- Slides: ~10 seconds  
+- Voice: ~5 seconds
+- Video: ~30 seconds
+- Total: ~60 seconds
