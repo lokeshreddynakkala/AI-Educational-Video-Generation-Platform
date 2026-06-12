@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from groq import Groq
 from config import get_config
@@ -13,9 +13,19 @@ import json
 
 router = APIRouter(prefix="/api/slides", tags=["slides"])
 
-# Initialize Groq client
 config = get_config()
-client = Groq(api_key=config.GROQ_API_KEY)
+
+
+def get_groq_client():
+    """Create the Groq client lazily so backend startup does not crash."""
+    if not config.GROQ_API_KEY:
+        return None
+
+    try:
+        return Groq(api_key=config.GROQ_API_KEY)
+    except Exception as error:
+        print(f"Groq client setup failed, using slide fallback: {str(error)}")
+        return None
 
 # Theme colors
 THEMES = {
@@ -43,7 +53,8 @@ THEMES = {
 class ScriptSegment(BaseModel):
     slide_number: int
     title: Optional[str] = None
-    text: str
+    text: Optional[str] = None
+    content: Optional[str] = None
     word_count: Optional[int] = None
     duration_secs: Optional[int] = None
 
@@ -62,11 +73,22 @@ class SlidesResponse(BaseModel):
     file_path: str
     file_name: str
     theme: str
+    slides: List[dict] = Field(default_factory=list)
+    total_slides: int
+
+
+def get_segment_text(segment: ScriptSegment) -> str:
+    """Accept either `text` or `content` so older and newer frontend code both work."""
+    return (segment.text or segment.content or "").strip()
 
 
 def generate_bullet_points(segment_text: str) -> List[str]:
     """Use Groq to generate bullet points from segment text"""
     try:
+        client = get_groq_client()
+        if not client:
+            raise Exception("Groq client unavailable")
+
         prompt = f"""Convert this text into 3-4 concise bullet points. Each bullet should be max 8 words.
 
 Text: {segment_text}
@@ -117,7 +139,7 @@ def create_powerpoint(topic: str, segments: List[ScriptSegment], theme: str = "p
         
         colors = THEMES.get(theme, THEMES["professional"])
         
-        # Title slide
+        # The first slide gives the exported deck a simple cover page.
         title_slide_layout = prs.slide_layouts[6]  # Blank layout
         slide = prs.slides.add_slide(title_slide_layout)
         
@@ -144,7 +166,7 @@ def create_powerpoint(topic: str, segments: List[ScriptSegment], theme: str = "p
         subtitle_frame.paragraphs[0].font.color.rgb = RGBColor(255, 255, 255)
         subtitle_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
         
-        # Content slides
+        # Each script segment becomes one content slide.
         for segment in segments:
             blank_slide_layout = prs.slide_layouts[6]  # Blank layout
             slide = prs.slides.add_slide(blank_slide_layout)
@@ -171,7 +193,8 @@ def create_powerpoint(topic: str, segments: List[ScriptSegment], theme: str = "p
             line.line.width = Pt(3)
             
             # Generate and add bullet points
-            bullets = generate_bullet_points(segment.text)
+            segment_text = get_segment_text(segment)
+            bullets = generate_bullet_points(segment_text)
             
             content_box = slide.shapes.add_textbox(Inches(1), Inches(2.2), Inches(8), Inches(4.8))
             text_frame = content_box.text_frame
@@ -215,6 +238,34 @@ async def generate_slides(request: SlidesRequest):
                 status_code=400,
                 detail="script_segments cannot be empty"
             )
+
+        normalized_segments = []
+        slide_previews = []
+
+        for index, segment in enumerate(request.script_segments, start=1):
+            segment_text = get_segment_text(segment)
+            if not segment_text:
+                continue
+
+            # Normalize the slide data once so the rest of the function stays simple.
+            normalized_segment = ScriptSegment(
+                slide_number=segment.slide_number or index,
+                title=segment.title,
+                text=segment_text,
+                word_count=segment.word_count,
+                duration_secs=segment.duration_secs
+            )
+            normalized_segments.append(normalized_segment)
+            slide_previews.append({
+                "title": normalized_segment.title or f"Slide {normalized_segment.slide_number}",
+                "description": segment_text[:180]
+            })
+
+        if not normalized_segments:
+            raise HTTPException(
+                status_code=400,
+                detail="script_segments must include text or content"
+            )
         
         # Validate theme
         if request.theme not in THEMES:
@@ -223,7 +274,7 @@ async def generate_slides(request: SlidesRequest):
         # Create PowerPoint presentation
         file_path, file_name, slides_id = create_powerpoint(
             request.topic,
-            request.script_segments,
+            normalized_segments,
             request.theme
         )
         
@@ -234,12 +285,15 @@ async def generate_slides(request: SlidesRequest):
         return SlidesResponse(
             slides_id=slides_id,
             topic=request.topic,
-            num_slides=len(request.script_segments) + 1,  # +1 for title slide
+            num_slides=len(normalized_segments) + 1,  # +1 for title slide
             file_path=file_path,
             file_name=file_name,
-            theme=request.theme
+            theme=request.theme,
+            slides=slide_previews,
+            total_slides=len(normalized_segments)
         )
-        
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Slide generation failed: {str(e)}")
 

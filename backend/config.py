@@ -14,6 +14,12 @@ class Config:
     HF_API_KEY = os.getenv("HF_API_KEY", "")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
     ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
+    HEYGEN_API_KEY = os.getenv("HEYGEN_API_KEY", "")
+    HEYGEN_AVATAR_ID = os.getenv("HEYGEN_AVATAR_ID", "")
+    ALLOWED_ORIGINS = os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000"
+    )
     
     # Database
     DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./project.db")
@@ -22,6 +28,10 @@ class Config:
     UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
     OUTPUT_DIR = os.getenv("OUTPUT_DIR", "./outputs")
     TEMP_DIR = os.getenv("TEMP_DIR", "./temp")
+    FFMPEG_PATH = os.getenv(
+        "FFMPEG_PATH",
+        r"C:\ffmpeg\ffmpeg-8.1-essentials_build\bin\ffmpeg.exe"
+    )
 
 
 class DevelopmentConfig(Config):

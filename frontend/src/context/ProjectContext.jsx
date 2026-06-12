@@ -1,6 +1,18 @@
-import React, { createContext, useState, useCallback } from 'react'
+import React, { createContext, useState } from 'react'
 
 export const ProjectContext = createContext()
+
+const defaultStages = {
+  script: null,
+  slides: null,
+  voice: null,
+  video: null,
+  subtitle: null
+}
+
+function updateMatchingProject(project, projectId, updates) {
+  return project.id === projectId ? { ...project, ...updates } : project
+}
 
 export function ProjectProvider({ children }) {
   const [projects, setProjects] = useState([])
@@ -8,56 +20,42 @@ export function ProjectProvider({ children }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const createProject = useCallback((projectData) => {
+  function createProject(projectData) {
     const newProject = {
       id: `project_${Date.now()}`,
       createdAt: new Date(),
+      creatorName: projectData.creatorName || '',
+      creatorRole: projectData.creatorRole || 'teacher',
+      institution: projectData.institution || '',
       ...projectData,
-      stages: {
-        script: null,
-        slides: null,
-        voice: null,
-        video: null,
-        subtitle: null
-      }
+      stages: defaultStages
     }
-    setProjects([newProject, ...projects])
+    setProjects((prev) => [newProject, ...prev])
     setCurrentProject(newProject)
     return newProject
-  }, [projects])
+  }
 
-  const updateProject = useCallback((projectId, updates) => {
-    setProjects(projects.map(p => 
-      p.id === projectId ? { ...p, ...updates } : p
-    ))
-    if (currentProject?.id === projectId) {
-      setCurrentProject({ ...currentProject, ...updates })
-    }
-  }, [projects, currentProject])
+  function updateProject(projectId, updates) {
+    setProjects((prev) => prev.map((project) => updateMatchingProject(project, projectId, updates)))
+    setCurrentProject((prev) => (prev?.id === projectId ? { ...prev, ...updates } : prev))
+  }
 
-  const updateStage = useCallback((projectId, stageName, stageData) => {
-    setProjects(projects.map(p => 
-      p.id === projectId 
-        ? {
-            ...p,
-            stages: { ...p.stages, [stageName]: stageData }
-          }
-        : p
-    ))
-    if (currentProject?.id === projectId) {
-      setCurrentProject({
-        ...currentProject,
-        stages: { ...currentProject.stages, [stageName]: stageData }
-      })
-    }
-  }, [projects, currentProject])
+  function updateStage(projectId, stageName, stageData) {
+    const stageUpdate = (project) => ({
+      ...project,
+      stages: { ...project.stages, [stageName]: stageData }
+    })
 
-  const deleteProject = useCallback((projectId) => {
-    setProjects(projects.filter(p => p.id !== projectId))
-    if (currentProject?.id === projectId) {
-      setCurrentProject(null)
-    }
-  }, [projects, currentProject])
+    setProjects((prev) =>
+      prev.map((project) => (project.id === projectId ? stageUpdate(project) : project))
+    )
+    setCurrentProject((prev) => (prev?.id === projectId ? stageUpdate(prev) : prev))
+  }
+
+  function deleteProject(projectId) {
+    setProjects((prev) => prev.filter((project) => project.id !== projectId))
+    setCurrentProject((prev) => (prev?.id === projectId ? null : prev))
+  }
 
   const value = {
     projects,

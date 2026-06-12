@@ -1,35 +1,49 @@
 import React, { useState } from 'react'
 import { useProject } from '../../context/ProjectContext'
-import { voiceAPI } from '../../services/api'
+import { API_ORIGIN, voiceAPI } from '../../services/api'
 import './StepVoice.css'
+
+function buildVoiceSegments(scriptSegments) {
+  return scriptSegments
+    .map((segment, index) => ({
+      slide_number: segment.slide_number || index + 1,
+      text: segment.content || segment.text || ''
+    }))
+    .filter((segment) => segment.text)
+}
 
 export default function StepVoice({ onNext, onBack }) {
   const { currentProject, updateStage, setLoading, setError } = useProject()
   const [generating, setGenerating] = useState(false)
   const [audioFiles, setAudioFiles] = useState(currentProject?.stages?.voice?.audioFiles || [])
+  const voiceType = currentProject?.settings?.voiceType || 'clear'
+  const speakingPace = currentProject?.settings?.speakingPace || 'normal'
+  const renderMode = currentProject?.settings?.mode || 'no-face'
 
   const handleGenerateVoice = async () => {
     setGenerating(true)
     setLoading(true)
     try {
-      const segments = (currentProject.stages.script?.segments || []).map((text, index) => ({
-        slide_number: index + 1,
-        text: text
-      }))
-      
+      const segments = buildVoiceSegments(currentProject.stages.script?.segments || [])
+
       const response = await voiceAPI.generate({
-        segments: segments,
-        language: currentProject.language || 'English'
+        segments,
+        language: currentProject.language || 'English',
+        speaker: voiceType,
+        pace: speakingPace
       })
-      
+
       setAudioFiles(response.data.audio_files)
       updateStage(currentProject.id, 'voice', {
         id: response.data.voice_id,
         audioFiles: response.data.audio_files,
-        totalSegments: response.data.total_segments
+        totalSegments: response.data.total_segments,
+        voiceType,
+        speakingPace
       })
+      setError('')
     } catch (err) {
-      setError(err.message || 'Failed to generate voice')
+      setError(err.response?.data?.detail || err.message || 'Failed to generate voice')
       console.error('Voice generation error:', err)
     } finally {
       setGenerating(false)
@@ -48,11 +62,17 @@ export default function StepVoice({ onNext, onBack }) {
   return (
     <div className="step-voice">
       <h2>Voice Generation</h2>
-      <p className="step-description">Generate voice audio for your video</p>
+      <p className="step-description">Generate narration using the selected voice and mode settings.</p>
+
+      <div className="voice-summary">
+        <span>Mode: {renderMode === 'avatar' ? 'Avatar' : 'No-Face'}</span>
+        <span>Voice: {voiceType}</span>
+        <span>Pace: {speakingPace}</span>
+      </div>
 
       <div className="voice-controls">
-        <button 
-          className="btn-primary" 
+        <button
+          className="btn-primary"
           onClick={handleGenerateVoice}
           disabled={generating}
         >
@@ -70,7 +90,7 @@ export default function StepVoice({ onNext, onBack }) {
                   <span>Slide {file.slide_number}</span>
                   <span>{file.file_name}</span>
                 </div>
-                <audio controls src={`http://localhost:8000/${file.file_path}`} />
+                <audio controls src={`${API_ORIGIN}/${file.file_path}`} />
               </div>
             ))}
           </div>

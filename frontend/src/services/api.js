@@ -1,6 +1,11 @@
 import axios from 'axios'
 
-const API_BASE_URL = 'http://localhost:8000/api'
+const fallbackHost =
+  window.location.hostname === '127.0.0.1' ? '127.0.0.1' : 'localhost'
+export const API_ORIGIN =
+  import.meta.env.VITE_API_ORIGIN || `http://${fallbackHost}:8000`
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || `${API_ORIGIN}/api`
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -9,50 +14,32 @@ const api = axios.create({
   }
 })
 
-// Script endpoints
+// One shared axios client keeps the API code simple for every step.
 export const scriptAPI = {
-  generate: (data) => api.post('/script/generate', data),
-  getScript: (scriptId) => api.get(`/script/scripts/${scriptId}`),
-  updateScript: (scriptId, data) => api.put(`/script/scripts/${scriptId}`, data),
-  deleteScript: (scriptId) => api.delete(`/script/scripts/${scriptId}`)
+  generate: (data) => api.post('/script/generate', data)
 }
 
-// Slides endpoints
 export const slidesAPI = {
-  generate: (data) => api.post('/slides/generate', data),
-  getSlides: (slidesId) => api.get(`/slides/slides/${slidesId}`),
-  updateSlides: (slidesId, data) => api.put(`/slides/slides/${slidesId}`, data),
-  deleteSlides: (slidesId) => api.delete(`/slides/slides/${slidesId}`)
+  generate: (data) => api.post('/slides/generate', data)
 }
 
-// Voice endpoints
 export const voiceAPI = {
-  generate: (data) => api.post('/voice/synthesize-all', data),
-  getVoice: (voiceId) => api.get(`/voice/voice/${voiceId}`),
-  updateVoice: (voiceId, data) => api.put(`/voice/voice/${voiceId}`, data),
-  deleteVoice: (voiceId) => api.delete(`/voice/voice/${voiceId}`)
+  generate: (data) => api.post('/voice/synthesize-all', data)
 }
 
-// Video endpoints
 export const videoAPI = {
   generate: (data) => api.post('/video/generate', data),
+  createPreview: (data) => api.post('/video/preview', data),
+  queueRender: (data) => api.post('/video/jobs', data),
+  getJob: (jobId) => api.get(`/video/jobs/${jobId}`),
   getVideo: (videoId) => api.get(`/video/video/${videoId}`),
-  getVideoStatus: (videoId) => api.get(`/video/video/${videoId}/status`),
+  shareVideo: (data) => api.post('/video/share', data),
+  getLibrary: () => api.get('/video/library'),
+  getSharedVideo: (token, accessCode = '') =>
+    api.get(`/video/share/${token}`, { params: { access_code: accessCode } }),
   downloadVideo: (filename) => `${API_BASE_URL}/video/download/${filename}`,
-  deleteVideo: (videoId) => api.delete(`/video/video/${videoId}`)
-}
-
-// Subtitle endpoints
-export const subtitleAPI = {
-  generate: (data) => api.post('/subtitle/generate', data),
-  getSubtitle: (subtitleId) => api.get(`/subtitle/subtitle/${subtitleId}`),
-  updateSubtitle: (subtitleId, data) => api.put(`/subtitle/subtitle/${subtitleId}`, data),
-  deleteSubtitle: (subtitleId) => api.delete(`/subtitle/subtitle/${subtitleId}`)
-}
-
-// Health check
-export const healthAPI = {
-  check: () => api.get('/health')
+  downloadSharedVideo: (token, accessCode = '') =>
+    `${API_BASE_URL}/video/share/${token}/download?access_code=${encodeURIComponent(accessCode)}`
 }
 
 export default api

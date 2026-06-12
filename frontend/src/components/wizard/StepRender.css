@@ -19,6 +19,12 @@
   gap: 2rem;
 }
 
+.render-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
 .project-summary {
   padding: 1.5rem;
   background: #f9f9f9;
@@ -47,6 +53,20 @@
 .render-progress {
   text-align: center;
   padding: 2rem;
+}
+
+.preview-panel,
+.share-panel {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: #f9f9f9;
+  border-radius: 10px;
+}
+
+.preview-panel video {
+  width: 100%;
+  border-radius: 10px;
+  margin-top: 1rem;
 }
 
 .progress-bar {
@@ -138,4 +158,11 @@
   gap: 1rem;
   justify-content: flex-end;
   margin-top: 2rem;
+}
+
+@media (max-width: 700px) {
+  .render-actions,
+  .step-buttons {
+    flex-direction: column;
+  }
 }

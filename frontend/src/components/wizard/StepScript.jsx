@@ -27,7 +27,7 @@ export default function StepScript({ onNext, onBack }) {
         segments: response.data.segments
       })
     } catch (err) {
-      setError(err.message || 'Failed to generate script')
+      setError(err.response?.data?.detail || err.message || 'Failed to generate script')
       console.error('Script generation error:', err)
     } finally {
       setGenerating(false)
@@ -43,7 +43,8 @@ export default function StepScript({ onNext, onBack }) {
     updateStage(currentProject.id, 'script', {
       id: currentProject.stages.script?.id || `script_${Date.now()}`,
       content: script,
-      wordCount: script.split(' ').length
+      wordCount: script.split(' ').length,
+      segments: currentProject.stages.script?.segments || []
     })
     onNext()
   }

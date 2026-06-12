@@ -1,16 +1,26 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 from groq import Groq
-import os
 from config import get_config
+import re
 import uuid
 
 router = APIRouter(prefix="/api/script", tags=["script"])
 
-# Initialize Groq client
 config = get_config()
-client = Groq(api_key=config.GROQ_API_KEY)
+
+
+def get_groq_client():
+    """Create the Groq client only when we actually need it."""
+    if not config.GROQ_API_KEY:
+        return None
+
+    try:
+        return Groq(api_key=config.GROQ_API_KEY)
+    except Exception as error:
+        print(f"Groq client setup failed, using fallback script generation: {str(error)}")
+        return None
 
 # Duration to word count mapping
 DURATION_MAPPING = {
@@ -41,6 +51,58 @@ class ScriptResponse(BaseModel):
     content: str
     word_count: int
     segments: List[ScriptSegment]
+
+
+def clean_narration_script(content: str) -> str:
+    """Remove stage directions and labels so TTS gets clean narration text."""
+    cleaned = content
+
+    # Remove bracketed stage directions like [Intro Music: ...] or [Slide: ...]
+    cleaned = re.sub(r"\[[^\]]*\]", " ", cleaned)
+
+    # Remove common speaker labels that make speech sound unnatural.
+    cleaned = re.sub(r"\bNarrator\s*:\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bVoiceover\s*:\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bSlide\s*\d+\s*:\s*", "", cleaned, flags=re.IGNORECASE)
+
+    # Compress extra whitespace left behind after cleanup.
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+
+    return cleaned
+
+
+def build_fallback_script(request: ScriptRequest, target_words: int) -> str:
+    """Create a simple local script when the AI provider is unavailable."""
+    topic = request.topic.strip()
+    audience = request.audience or "General"
+    language = request.language or "English"
+    extra_notes = request.extra_notes.strip() if request.extra_notes else ""
+
+    sections = [
+        f"Welcome to this {language} lesson on {topic}.",
+        f"This video is designed for {audience} learners and will explain the topic in a simple step-by-step way.",
+        f"First, let us understand what {topic} means and why it matters in real learning situations.",
+        f"Next, we will look at the main ideas, important terms, and practical examples connected to {topic}.",
+        f"As we move forward, focus on the key points because they help build a strong conceptual foundation.",
+        f"After that, we will connect the topic to real use cases, classroom applications, or project work.",
+        f"Finally, we will summarize the important ideas and review what should be remembered from this lesson on {topic}."
+    ]
+
+    if extra_notes:
+        sections.insert(
+            5,
+            f"Keep this additional instruction in mind while presenting the lesson: {extra_notes}."
+        )
+
+    script = " ".join(sections)
+
+    while len(script.split()) < target_words:
+        script += (
+            f" Remember that {topic} becomes easier to understand when you break it into small ideas, "
+            f"review examples, and connect the concept to practical situations."
+        )
+
+    return script
 
 
 def split_script_into_segments(content: str, target_words_per_segment: int = 80) -> List[ScriptSegment]:
@@ -112,23 +174,37 @@ Important guidelines:
 3. Use natural transitions between ideas
 4. Make it engaging and maintain viewer interest
 5. Aim for approximately {target_words} words total
+6. Do not include stage directions, timestamps, speaker labels, slide labels, or music cues
+7. Do not write text like [Intro Music], [Slide: ...], Narrator:, Voiceover:, or timestamps
+8. Return plain spoken narration only
 
 Please provide only the script content, without any additional explanations or meta-commentary."""
 
-        # Call Groq API with llama3-70b model
-        message = client.chat.completions.create(
-            model="llama-3.1-8b-instant",  # Using available Groq model
-            max_tokens=2048,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-        )
-        
-        # Extract the generated script
-        script_content = message.choices[0].message.content.strip()
+        script_content = ""
+
+        client = get_groq_client()
+
+        if client:
+            try:
+                message = client.chat.completions.create(
+                    model="llama-3.1-8b-instant",
+                    max_tokens=2048,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                )
+                script_content = message.choices[0].message.content.strip()
+            except Exception as groq_error:
+                print(f"Groq script generation failed, using fallback: {str(groq_error)}")
+
+        if not script_content:
+            script_content = build_fallback_script(request, target_words)
+
+        script_content = clean_narration_script(script_content)
+
         word_count = len(script_content.split())
         
         # Split into segments for slides
@@ -146,6 +222,8 @@ Please provide only the script content, without any additional explanations or m
             segments=segments
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Script generation failed: {str(e)}")
 
