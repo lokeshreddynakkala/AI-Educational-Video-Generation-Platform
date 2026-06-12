@@ -1,0 +1,81 @@
+{
+  "client": "Thunder Client",
+  "collectionName": "EduVideo Studio API Tests",
+  "dateExport": "2026-04-14",
+  "version": "1.1",
+  "folders": [
+    {
+      "name": "Health & Root",
+      "requests": [
+        {
+          "name": "Health Check - GET /",
+          "method": "GET",
+          "url": "http://localhost:8000/",
+          "headers": [],
+          "body": {},
+          "tests": {}
+        }
+      ]
+    },
+    {
+      "name": "Script Generation",
+      "requests": [
+        {
+          "name": "Generate Script",
+          "method": "POST",
+          "url": "http://localhost:8000/api/script/generate",
+          "headers": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": {
+            "raw": "{\n  \"topic\": \"Introduction to Python\",\n  \"duration\": 120,\n  \"tone\": \"educational\",\n  \"target_audience\": \"beginners\"\n}"
+          },
+          "tests": {}
+        }
+      ]
+    },
+    {
+      "name": "Voice Generation",
+      "requests": [
+        {
+          "name": "Generate Voice",
+          "method": "POST",
+          "url": "http://localhost:8000/api/voice/generate",
+          "headers": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": {
+            "raw": "{\n  \"script_id\": \"script_123\",\n  \"voice_id\": \"default\",\n  \"speed\": 1.0,\n  \"pitch\": 1.0\n}"
+          },
+          "tests": {}
+        }
+      ]
+    },
+    {
+      "name": "Slides Generation",
+      "requests": [
+        {
+          "name": "Generate Slides",
+          "method": "POST",
+          "url": "http://localhost:8000/api/slides/generate",
+          "headers": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": {
+            "raw": "{\n  \"script_id\": \"script_123\",\n  \"slide_count\": 5,\n  \"style\": \"modern\"\n}"
+          },
+          "tests": {}
+        }
+      ]
+    }
+  ]
+}
